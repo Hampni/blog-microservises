@@ -1,0 +1,101 @@
+version: '3.9'
+services:
+    frontend:
+        build:
+            context: ./gate/
+            dockerfile: Dockerfile
+        ports:
+            - '8000:8080'
+        networks:
+            - microservices-test
+    posts:
+        build:
+            context: ./Posts/vendor/laravel/sail/runtimes/8.1
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '1000'
+        image: sail-8.1/app
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '8001:80'
+        volumes:
+            - ./Posts:/var/www/html
+        networks: 
+            - microservices-test
+    comments:
+        build:
+            context: ./Comments/vendor/laravel/sail/runtimes/8.1
+            dockerfile: Dockerfile
+            args:
+                  WWWGROUP: '1000'
+        image: sail-8.1/app
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '8002:80'
+        volumes:
+            - './Comments:/var/www/html'
+        networks: 
+            - microservices-test
+    mysql_posts:
+        image: 'mysql/mysql-server:8.0'
+        ports:
+            - '3306:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: '2481632'
+            MYSQL_ROOT_HOST: "%"
+            MYSQL_DATABASE: 'posts-database'
+            MYSQL_USER: 'hampni'
+            MYSQL_PASSWORD: '2481632'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+        networks:
+            - microservices-test
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-p 2481632"]
+            retries: 3
+            timeout: 5s
+    mysql_comments:
+        image: 'mysql/mysql-server:8.0'
+        ports:
+            - '3307:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: '2481632'
+            MYSQL_ROOT_HOST: "%"
+            MYSQL_DATABASE: 'comments-database'
+            MYSQL_USER: 'hampni'
+            MYSQL_PASSWORD: '2481632'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+        networks:
+            - microservices-test
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-p 2481632"]
+            retries: 3
+            timeout: 5s
+    myadmin_posts:
+        image: 'phpmyadmin:latest'
+        ports:
+            - 8080:80
+        environment:
+            MYSQL_ROOT_PASSWORD: '2481632'
+        links:
+            - "mysql_posts:db"
+        depends_on:
+            - mysql_posts
+        networks:
+            - microservices-test
+    myadmin_comments:
+        image: 'phpmyadmin:latest'
+        ports:
+            - 8081:80
+        environment:
+            MYSQL_ROOT_PASSWORD: '2481632'
+        links:
+            - "mysql_comments:db"
+        depends_on:
+            - mysql_comments
+        networks:
+            - microservices-test
+networks:
+    microservices-test:
+        driver: bridge
